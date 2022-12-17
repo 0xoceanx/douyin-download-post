@@ -1,3 +1,11 @@
-# download video by userID
+# download video by userPage link
 
-target domain https://www.douyin.com/user/<MS4wLjABAAAA_66XyWwS7dwAO2u74HUB9j7aCnFb9Ghg-y4d4ipPp5M>
+usage: 
+1.git clone  
+2.set link in config/config.json
+3.npm install
+4.npm run compile
+5.wait for browser open and maybe resovle captcha mannuly
+
+example:
+target userlink https://www.douyin.com/user/MS4wLjABAAAAA2gtY_zWvwxTLBTu2c-6e3Ns10dMsjL9LpE9MMneoEY
