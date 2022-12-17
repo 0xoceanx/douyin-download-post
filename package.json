@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "compile": "tsc ./src/index.ts && node ./src/index.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.28.1",
+    "@types/node": "^18.11.9",
+    "ts-node": "^10.9.1"
+  },
+  "dependencies": {
+    "axios": "^1.2.1",
+    "playwright": "^1.28.1",
+    "sanitize-filename": "^1.6.3"
+  }
+}
