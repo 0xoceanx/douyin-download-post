@@ -1,3 +1,9 @@
+const sanitize = require("sanitize-filename");
+import { chromium } from 'playwright';
+import { writeFileSync, readFileSync, readdirSync, mkdirSync, createWriteStream } from 'fs';
+import axios from 'axios';
+import { finished } from 'stream';
+
 // Description: scrape video from douyin by user page url
 // config : config/config.json
 // usage : npm run compile
@@ -8,6 +14,8 @@
 // BUG windows max length limit
 
 
+var save_dir = 'E:\\NSFW\\';
+var cookies = '__ac_signature=_02B4Z6wo00f01y00zYgAAIDAboxoUMv5wdMtFMkAAKiT98; __ac_referer=__ac_blank'
 class Video {
 	aweme_id: string = "";
 	urls: string[] = [];
@@ -19,25 +27,20 @@ class Video {
 	}
 }
 var downloading: number = 0;
-var headers = [
-	"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-	"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
-	"Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
-	"Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
-	"Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
-	"Mozilla/5.0 (compatible; DuckDuckBot/1.0; +http://duckduckgo.com/duckduckbot.html)",
-	"Mozilla/5.0 (compatible; Sogou web spider/4.0; +http://www.sogou.com/docs/help/webmasters.htm#07)",
-	"Mozilla/5.0 (compatible; Exabot/3.0; +http://www.exabot.com/go/robot)",
-	"Mozilla/5.0 (compatible; AhrefsBot/6.1; +http://ahrefs.com/robot/)",
-	"Mozilla/5.0 (compatible; SemrushBot/3~bl; +http://www.semrush.com/bot.html)",
-	"Mozilla/5.0 (compatible; MJ12bot/v1.4.8; http://www.majestic12.co.uk/bot.php?+)",
-]; // bypass anti-spider
+// var headers = [
+// 	"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+// 	"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+// 	"Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+// 	"Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
+// 	"Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+// 	"Mozilla/5.0 (compatible; DuckDuckBot/1.0; +http://duckduckgo.com/duckduckbot.html)",
+// 	"Mozilla/5.0 (compatible; Sogou web spider/4.0; +http://www.sogou.com/docs/help/webmasters.htm#07)",
+// 	"Mozilla/5.0 (compatible; Exabot/3.0; +http://www.exabot.com/go/robot)",
+// 	"Mozilla/5.0 (compatible; AhrefsBot/6.1; +http://ahrefs.com/robot/)",
+// 	"Mozilla/5.0 (compatible; SemrushBot/3~bl; +http://www.semrush.com/bot.html)",
+// 	"Mozilla/5.0 (compatible; MJ12bot/v1.4.8; http://www.majestic12.co.uk/bot.php?+)",
+// ]; // bypass anti-spider
 
-const sanitize = require("sanitize-filename");
-import { firefox } from 'playwright';
-import { writeFileSync, readFileSync, readdirSync, mkdirSync, createWriteStream } from 'fs';
-import axios from 'axios';
-import { finished } from 'stream';
 
 function init() {
 	// create folder and file if not exists
@@ -66,12 +69,13 @@ function get_config() {
 // download video and save as name
 function download(video: Video) {
 	// check if folder exists
-	let folders = readdirSync(`./videos/`);
+	let folders = readdirSync(`${save_dir}`);
 	let dir = sanitize(video.name);
 	if (!folders.includes(dir)) {
-		mkdirSync(`./videos/${dir}`);
+		console.log(`${save_dir}${dir}`)
+		mkdirSync(`${save_dir}${dir}`);
 	}
-	let target_folder = readdirSync(`./videos/${dir}`);
+	let target_folder = readdirSync(`${save_dir}${dir}`);
 	// check if file exists
 	let file_name = sanitize(video.name + " - " + video.description + ".mp4");
 	let file_name2 = sanitize(video.name + " - " + video.description + " - 1.jpg");
@@ -86,7 +90,7 @@ function download(video: Video) {
 	if (video.type == "video") {
 		downloading++;
 		axios.get(video.url, { responseType: 'stream' }).then((res) => {
-			res.data.pipe(createWriteStream(`./videos/${dir}/${file_name}`))
+			res.data.pipe(createWriteStream(`${save_dir}${dir}/${file_name}`))
 			console.log("downloaded " + file_name);
 			downloading--;
 		}).catch((err) => {
@@ -97,7 +101,7 @@ function download(video: Video) {
 			downloading++;
 			// file_name2 = sanitize(video.name + " - " + video.description + " - " + video.aweme_id + " - " + i + ".jpg");
 			file_name2 = sanitize(video.name + " - " + video.description + " - " + i + ".jpg");
-			let img_stream = createWriteStream(`./videos/${dir}/${file_name2}`); //XXX img_stream should create out of then() otherwise will write to incorrect file
+			let img_stream = createWriteStream(`${save_dir}${dir}/${file_name2}`); //XXX img_stream should create out of then() otherwise will write to incorrect file
 			//use closure to give correct stream and name
 			(function (file_name2, img_stream) {
 				axios.get(video.urls[i], { responseType: 'stream' }).then((res) => { // 
@@ -121,24 +125,26 @@ function download(video: Video) {
 
 async function get_video_info(id: string) {
 	// get video info from api
-	const api_url: string = `https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=${id}`;
+	const api_url: string = `https://www.iesdouyin.com/aweme/v1/web/aweme/detail/?aweme_id=${id}&aid=1128&version_name=23.5.0&device_platform=android&os_version=2333`;
 	// send request to api_url
 	let video = new Video(); //FIXME issue: axios is broken [https://github.com/harlan-zw/unlighthouse/issues/42]
-	await axios.get(api_url, { headers: { "Accept-Encoding": '*', 'User-Agent': headers[Math.floor(Math.random() * headers.length)] } }).then((res) => {
-		const data = res.data;
-		if (data.item_list[0].images != null) { // images
-			for (let i = 0; i < data.item_list[0].images.length; i++) {
-				video.urls.push(data.item_list[0].images[i].url_list[3])
+	// use bot user-agent will cause html problem , some link will not show in the <a>
+	await axios.get(api_url, { headers: { "Accept-Encoding": 'application/json', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36', Cookie: cookies } })
+		.then((res) => {
+			const data = res.data;
+			if (data.aweme_detail.images != null) { // images
+				for (let i = 0; i < data.aweme_detail.images.length; i++) {
+					video.urls.push(data.aweme_detail.images[i].url_list[3])
+				}
 			}
-		}
-		video.url = data.item_list[0].video.play_addr.url_list[0].replace(/playwm/, "play");
-		video.name = data.item_list[0].author.nickname;
-		video.description = data.item_list[0].desc;
-		video.aweme_id = data.item_list[0].aweme_id;
-	}).catch((err) => {
-		video.type = "error";
-		writeFileSync("./log/error.log", err + "\n", { flag: 'a' });
-	});
+			video.url = data.aweme_detail.video.play_addr.url_list[0].replace(/playwm/, "play");
+			video.name = data.aweme_detail.author.nickname;
+			video.description = data.aweme_detail.desc;
+			video.aweme_id = data.aweme_detail.aweme_id;
+		}).catch((err) => {
+			video.type = "error";
+			writeFileSync("./log/error.log", err + "\n", { flag: 'a' });
+		});
 	return video;
 }
 
@@ -148,20 +154,16 @@ async function main() {
 	var downloading = 0;
 	// headers for bypass anti-spider
 	let urls = get_config();
-	// lanuch browser and go to the url
-	let browser = await firefox.launch({ headless: false });
-	// new context for apply headers ; browser not support headers setting
-	let context = await browser.newContext({
-		viewport: { width: 600, height: 400 }, //FIXME maybe the captcha will show so headless false . if possible , we can use CV to solve captcha
-		userAgent: headers[Math.floor(Math.random() * headers.length)],
-	});
+	// lanuch browser and go to the url 
+	// let browser = await chromium.launch({ headless: false, args: ['--disable-web-security', '--disable-site-isolation-trials'], });
+	let context = await chromium.launchPersistentContext('', { headless: true, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36', viewport: { width: 1200, height: 900 }, args: ['--disable-web-security', '--disable-site-isolation-trials'], bypassCSP: true });
 	let page = await context.newPage();
 	let count = 0;
 	for (let i = 0; i < urls.length; i++) {
 		// visit url 
 		await page.goto(urls[i]);
 		// scroll down to load more videos until there's no more videos
-		await page.waitForTimeout(4000);
+		await page.waitForTimeout(5000);
 		while (true) {
 			await page.evaluate(() => {
 				window.scrollTo(0, document.body.scrollHeight);
@@ -177,10 +179,15 @@ async function main() {
 		// get all video urls
 		let video_urls = await page.evaluate(() => {
 			let video_urls = [];
-			let video_nodes = <HTMLAnchorElement[]><unknown>document.querySelector("#douyin-right-container > div._bEYe5zo > div > div > div:nth-child(2) > div.mwo84cvf > div.wwg0vUdQ > div.UFuuTZ1P > ul")!.children;
+			// <HTMLAnchorElement[]><unknown>
+			let video_nodes = document.querySelector("#douyin-right-container > div._bEYe5zo > div > div > div:nth-child(2) > div.mwo84cvf > div.wwg0vUdQ > div.UFuuTZ1P > ul")!.children;
 			for (let i = 0; i < video_nodes.length; i++) {
-				video_urls.push(video_nodes[i].children[0].getAttribute("href"));
+				let link = video_nodes[i].children[0];
+				if (link != null) {
+					video_urls.push(link.getAttribute("href"));
+				}
 			}
+
 			return video_urls;
 		});
 		// get author name 
@@ -202,7 +209,7 @@ async function main() {
 				// get video info from api
 				let video;
 				let tmp = video_urls[j].split("/");
-				if (tmp.length == 3) { // video url
+				if (!video_urls[j].includes('note')) {
 					video = await get_video_info(tmp[2]);
 					video.type = "video";
 				} else { // image url
@@ -220,7 +227,9 @@ async function main() {
 	while (downloading) {
 		await page.waitForTimeout(1000);
 	}
-	await browser.close();
+	// close browser 
+	console.log('close browser');
+	await context.close();
 }
 
 

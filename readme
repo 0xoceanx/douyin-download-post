@@ -1,9 +1,4 @@
 # download video by userPage link
-
-its broken now.
-api url is changed and capcha verify is needed in first run.
-
-
 usage: 
 1.git clone  
 2.set link in config/config.json
